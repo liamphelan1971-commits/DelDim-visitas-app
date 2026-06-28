@@ -533,6 +533,58 @@
     width: 100%;
   }
 
+  .btn-borrar-card {
+    background: none;
+    border: none;
+    font-size: 16px;
+    cursor: pointer;
+    padding: 2px 4px;
+    border-radius: 6px;
+    opacity: 0.5;
+    transition: opacity 0.15s, background 0.15s;
+  }
+  .btn-borrar-card:active {
+    opacity: 1;
+    background: #FEE2E2;
+  }
+
+  .modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 500;
+    display: flex; align-items: flex-end;
+    padding: 20px;
+  }
+  .modal-overlay.hidden { display: none; }
+  .modal-box {
+    background: white;
+    border-radius: 16px;
+    padding: 24px 20px 20px;
+    width: 100%;
+  }
+  .modal-titulo {
+    font-size: 17px; font-weight: 700; color: var(--texto);
+    margin-bottom: 6px;
+  }
+  .modal-desc {
+    font-size: 14px; color: var(--gris-texto);
+    margin-bottom: 20px; line-height: 1.4;
+  }
+  .modal-btns { display: flex; gap: 10px; }
+  .modal-btn-cancelar {
+    flex: 1; background: var(--gris-fondo);
+    border: 1.5px solid var(--gris-borde);
+    border-radius: 10px; padding: 13px;
+    font-size: 15px; font-weight: 600;
+    cursor: pointer; color: var(--texto);
+  }
+  .modal-btn-borrar {
+    flex: 1; background: var(--rojo);
+    border: none; border-radius: 10px; padding: 13px;
+    font-size: 15px; font-weight: 700;
+    cursor: pointer; color: white;
+  }
+
   .toast {
     position: fixed;
     bottom: 100px;
@@ -978,6 +1030,17 @@
 
 </div><!-- /main -->
 
+<div class="modal-overlay hidden" id="modal-borrar">
+  <div class="modal-box">
+    <div class="modal-titulo">¿Borrar esta visita?</div>
+    <div class="modal-desc" id="modal-borrar-desc">Esta acción no se puede deshacer.</div>
+    <div class="modal-btns">
+      <button class="modal-btn-cancelar" onclick="cerrarModal()">Cancelar</button>
+      <button class="modal-btn-borrar" onclick="confirmarBorrar()">Borrar</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -996,6 +1059,7 @@ const NOMBRES_BLOQUES = [
 ];
 let visitas = JSON.parse(localStorage.getItem('deldim_visitas') || '[]');
 let factoresActivos = {};
+let editandoIndex = -1; // -1 = nueva visita, >=0 = editando existente
 
 // ─── NAVEGACIÓN ───────────────────────────────────────────────────────────────
 function mostrarVista(id) {
@@ -1006,6 +1070,7 @@ function mostrarVista(id) {
 function nuevaVisita() {
   bloqueActual = 0;
   factoresActivos = {};
+  editandoIndex = -1;
   limpiarFormulario();
   renderProgressBar();
   mostrarBloque(0);
@@ -1306,9 +1371,20 @@ function recogerDatos() {
 
 function guardarVisita() {
   const datos = recogerDatos();
-  visitas.unshift(datos);
+  if (editandoIndex >= 0) {
+    // Mantener id y fecha original, actualizar el resto
+    datos.id = visitas[editandoIndex].id;
+    datos.fecha = visitas[editandoIndex].fecha;
+    datos.fechaISO = visitas[editandoIndex].fechaISO;
+    datos.fechaEdicion = new Date().toLocaleDateString('es-ES');
+    visitas[editandoIndex] = datos;
+    mostrarToast('Visita actualizada ✓');
+  } else {
+    visitas.unshift(datos);
+    mostrarToast('Visita guardada ✓');
+  }
   localStorage.setItem('deldim_visitas', JSON.stringify(visitas));
-  mostrarToast('Visita guardada ✓');
+  editandoIndex = -1;
   setTimeout(() => volverLista(), 1200);
 }
 
@@ -1325,19 +1401,132 @@ function renderLista() {
     <div class="visita-card" onclick="verVisita(${i})">
       <div class="visita-card-top">
         <div class="visita-card-nombre">${vis.cliente || 'Sin nombre'}</div>
-        <div class="visita-card-fecha">${vis.fecha}</div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div class="visita-card-fecha">${vis.fechaEdicion ? '✏️ ' + vis.fechaEdicion : vis.fecha}</div>
+          <button class="btn-borrar-card" onclick="event.stopPropagation();borrarVisita(${i})" title="Borrar visita">🗑️</button>
+        </div>
       </div>
       <div class="visita-card-dir">${vis.direccion || '—'}</div>
       <div class="visita-card-bottom">
         <span class="badge-tipo">${vis.tipoProp || vis.alcance?.split(',')[0] || '—'}</span>
-        ${vis.estimacionTotal ? `<span class="estimacion-badge">${formatEur(vis.estimacionTotal)}</span>` : ''}
+        ${vis.estimacionTotal ? `<span class="estimacion-badge">${formatEur(vis.estimacionTotal)}</span>` : '<span style="font-size:12px;color:var(--gris-texto)">Pulsa para editar →</span>'}
       </div>
     </div>
   `).join('');
 }
 
 function verVisita(i) {
-  mostrarToast('Función de edición próximamente');
+  editandoIndex = i;
+  const d = visitas[i];
+  limpiarFormulario();
+  factoresActivos = {};
+
+  // Bloque A
+  sv('f-cliente', d.cliente);
+  sv('f-telefono', d.telefono);
+  sv('f-email', d.email);
+  sv('f-direccion', d.direccion);
+  setChipSingle('f-tipo-prop', d.tipoProp);
+  sv('f-anio', d.anio);
+  setChipSingle('f-planos', d.planos);
+
+  // Bloque B
+  setChips('f-alcance', d.alcance);
+  sv('f-notas-alcance', d.notasAlcance);
+
+  // Bloque C
+  setRadio('f-estado', d.estadoGeneral);
+  setChipSingle('f-electrica', d.electrica);
+  setChipSingle('f-fontaneria', d.fontaneria);
+  setChipSingle('f-ocupada', d.ocupada);
+  setChips('f-acceso', d.acceso);
+  sv('f-obs-estado', d.obsEstado);
+
+  // Bloque D
+  setRadio('f-calidad', d.calidad);
+  setChipSingle('f-referencias', d.referencias);
+  setChipSingle('f-materiales', d.materiales);
+  sv('f-preferencias', d.preferencias);
+
+  // Bloque E
+  setRadio('f-urgencia', d.urgencia);
+  sv('f-fecha-inicio', d.fechaInicio);
+  setRadio('f-presupuesto', d.presupuesto);
+  setChipSingle('f-financiacion', d.financiacion);
+
+  // Bloque F - calculadora
+  sv('f-metros', d.metros);
+  sv('f-ratio', d.ratio);
+  sv('f-obs-estimacion', d.obsEstimacion);
+  // Restaurar factores activos por porcentaje almacenado
+  if (d.ajustePct) {
+    // Reactivar factores que sumen el ajuste guardado (aproximación)
+    document.querySelectorAll('.factor-item').forEach(el => {
+      const pct = parseInt(el.dataset.pct);
+      // No restauramos factores automáticamente para evitar errores;
+      // el usuario los puede re-marcar si edita
+    });
+  }
+  calcularEstimacion();
+
+  // Bloque G - alertas
+  if (d.alertas) {
+    const alertaTextos = d.alertas.split(' · ').map(a => a.trim());
+    document.querySelectorAll('#f-alertas .alerta-item').forEach(el => {
+      if (alertaTextos.some(a => el.textContent.trim().includes(a.replace(/^[^ ]+ /, '')))) {
+        el.classList.add('marcada');
+      }
+    });
+    const count = document.querySelectorAll('#f-alertas .alerta-item.marcada').length;
+    if (count >= 2) {
+      document.getElementById('alerta-banner').classList.add('visible');
+      document.getElementById('alerta-count-num').textContent = count;
+    }
+  }
+  setRadio('f-proxima', d.proximaAccion);
+  sv('f-fecha-respuesta', d.fechaRespuesta);
+  sv('f-obs-final', d.obsFinal);
+
+  bloqueActual = 0;
+  renderProgressBar();
+  mostrarBloque(0);
+  mostrarVista('view-form');
+  document.getElementById('form-title').textContent = `Editar: ${d.cliente || 'Visita'}`;
+}
+
+// helpers para cargar datos en el formulario
+function sv(id, val) {
+  const el = document.getElementById(id);
+  if (el && val !== undefined && val !== null) el.value = val;
+}
+
+function setChipSingle(groupId, val) {
+  if (!val) return;
+  const group = document.getElementById(groupId);
+  if (!group) return;
+  group.querySelectorAll('.chip').forEach(c => {
+    if (val.includes(c.textContent.trim())) c.classList.add('selected');
+  });
+}
+
+function setChips(groupId, val) {
+  if (!val) return;
+  const vals = val.split(',').map(v => v.trim());
+  const group = document.getElementById(groupId);
+  if (!group) return;
+  group.querySelectorAll('.chip').forEach(c => {
+    if (vals.includes(c.textContent.trim())) c.classList.add('selected');
+  });
+}
+
+function setRadio(groupId, val) {
+  if (!val) return;
+  const group = document.getElementById(groupId);
+  if (!group) return;
+  group.querySelectorAll('.radio-chip').forEach(c => {
+    if (c.textContent.trim() === val.trim()) c.classList.add('selected');
+  });
+}
 }
 
 // ─── PDF ──────────────────────────────────────────────────────────────────────
@@ -1496,6 +1685,31 @@ function generarPDF() {
   const nombreArchivo = `DelDim_Visita_${datos.cliente.replace(/\s+/g, '_')}_${datos.fecha.replace(/\//g, '-')}.pdf`;
   doc.save(nombreArchivo);
   mostrarToast('PDF generado ✓');
+}
+
+// ─── BORRAR VISITA ────────────────────────────────────────────────────────────
+let borrarIndex = -1;
+
+function borrarVisita(i) {
+  borrarIndex = i;
+  const vis = visitas[i];
+  document.getElementById('modal-borrar-desc').textContent =
+    `Se borrará la visita de ${vis.cliente || 'este cliente'} (${vis.fecha}). Esta acción no se puede deshacer.`;
+  document.getElementById('modal-borrar').classList.remove('hidden');
+}
+
+function cerrarModal() {
+  document.getElementById('modal-borrar').classList.add('hidden');
+  borrarIndex = -1;
+}
+
+function confirmarBorrar() {
+  if (borrarIndex < 0) return;
+  visitas.splice(borrarIndex, 1);
+  localStorage.setItem('deldim_visitas', JSON.stringify(visitas));
+  cerrarModal();
+  renderLista();
+  mostrarToast('Visita borrada');
 }
 
 // ─── UTILIDADES ───────────────────────────────────────────────────────────────
