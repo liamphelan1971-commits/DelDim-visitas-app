@@ -1,0 +1,1740 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#1F3864">
+<title>DelDim Visitas</title>
+<link rel="manifest" href="manifest.json">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  :root {
+    --azul: #1F3864;
+    --azul-med: #2C4F8F;
+    --naranja: #E05C1A;
+    --naranja-claro: #F47B3E;
+    --gris-fondo: #F5F6F8;
+    --gris-card: #FFFFFF;
+    --gris-borde: #E2E6EE;
+    --gris-texto: #6B7280;
+    --verde: #22C55E;
+    --rojo: #EF4444;
+    --amarillo: #F59E0B;
+    --texto: #111827;
+    --radio: 12px;
+    --sombra: 0 2px 12px rgba(31,56,100,0.10);
+  }
+
+  html, body { height: 100%; background: var(--azul); }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    color: var(--texto);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ─── HEADER ─────────────────────────────────── */
+  .app-header {
+    background: var(--azul);
+    padding: 16px 20px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .app-header .logo { display: flex; align-items: center; gap: 10px; }
+  .app-header .logo-mark {
+    width: 36px; height: 36px;
+    background: var(--naranja);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 900; color: white; font-size: 15px; letter-spacing: -1px;
+  }
+  .app-header .logo-text { color: white; }
+  .app-header .logo-text strong { display: block; font-size: 15px; font-weight: 700; letter-spacing: 0.5px; }
+  .app-header .logo-text span { font-size: 11px; color: rgba(255,255,255,0.6); }
+  .btn-nueva {
+    background: var(--naranja);
+    color: white;
+    border: none;
+    border-radius: 20px;
+    padding: 8px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex; align-items: center; gap: 6px;
+  }
+
+  /* ─── MAIN CONTENT ───────────────────────────── */
+  .main {
+    background: var(--gris-fondo);
+    flex: 1;
+    border-radius: 20px 20px 0 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* ─── VIEWS ──────────────────────────────────── */
+  .view { display: none; }
+  .view.active { display: block; }
+
+  /* ─── LISTA DE VISITAS ───────────────────────── */
+  .lista-header {
+    padding: 20px 20px 8px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .lista-header h2 { font-size: 20px; font-weight: 700; color: var(--azul); }
+  .lista-header .contador {
+    background: var(--azul);
+    color: white;
+    border-radius: 20px;
+    padding: 3px 10px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 60px 40px;
+    color: var(--gris-texto);
+  }
+  .empty-state .icon { font-size: 48px; margin-bottom: 16px; }
+  .empty-state p { font-size: 15px; line-height: 1.5; }
+
+  .visita-card {
+    background: var(--gris-card);
+    margin: 0 16px 12px;
+    border-radius: var(--radio);
+    box-shadow: var(--sombra);
+    padding: 16px;
+    cursor: pointer;
+    border: 1.5px solid transparent;
+    transition: border-color 0.15s;
+  }
+  .visita-card:active { border-color: var(--naranja); }
+  .visita-card-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 8px; }
+  .visita-card-nombre { font-size: 16px; font-weight: 700; color: var(--azul); }
+  .visita-card-fecha { font-size: 12px; color: var(--gris-texto); }
+  .visita-card-dir { font-size: 13px; color: var(--gris-texto); margin-bottom: 10px; }
+  .visita-card-bottom { display: flex; align-items: center; justify-content: space-between; }
+  .badge-tipo {
+    background: var(--gris-fondo);
+    border-radius: 20px;
+    padding: 3px 10px;
+    font-size: 12px;
+    color: var(--azul);
+    font-weight: 600;
+  }
+  .estimacion-badge {
+    font-size: 15px;
+    font-weight: 800;
+    color: var(--naranja);
+  }
+
+  /* ─── FORMULARIO ─────────────────────────────── */
+  .form-header {
+    background: var(--azul);
+    padding: 16px 20px 20px;
+    color: white;
+  }
+  .form-back {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 14px; color: rgba(255,255,255,0.7);
+    cursor: pointer; margin-bottom: 12px;
+    background: none; border: none; color: rgba(255,255,255,0.7);
+  }
+  .form-title { font-size: 20px; font-weight: 700; }
+  .form-subtitle { font-size: 13px; color: rgba(255,255,255,0.6); margin-top: 2px; }
+
+  /* Progress bar */
+  .progress-bar-wrap {
+    background: var(--azul);
+    padding: 0 20px 16px;
+  }
+  .progress-steps {
+    display: flex; gap: 4px;
+  }
+  .progress-step {
+    flex: 1; height: 3px;
+    background: rgba(255,255,255,0.2);
+    border-radius: 2px;
+    transition: background 0.3s;
+  }
+  .progress-step.done { background: var(--naranja); }
+  .progress-step.active { background: white; }
+
+  .form-body {
+    background: var(--gris-fondo);
+    border-radius: 20px 20px 0 0;
+    min-height: calc(100vh - 180px);
+    padding-bottom: 100px;
+  }
+
+  /* Bloques del formulario */
+  .bloque {
+    display: none;
+    padding: 20px 16px 0;
+  }
+  .bloque.active { display: block; }
+
+  .bloque-titulo {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--naranja);
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  .bloque-nombre {
+    font-size: 20px;
+    font-weight: 800;
+    color: var(--azul);
+    margin-bottom: 16px;
+  }
+
+  /* Fields */
+  .field { margin-bottom: 16px; }
+  .field label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--gris-texto);
+    margin-bottom: 6px;
+  }
+  .field input, .field select, .field textarea {
+    width: 100%;
+    background: white;
+    border: 1.5px solid var(--gris-borde);
+    border-radius: 10px;
+    padding: 12px 14px;
+    font-size: 15px;
+    color: var(--texto);
+    font-family: inherit;
+    transition: border-color 0.15s;
+    -webkit-appearance: none;
+  }
+  .field input:focus, .field select:focus, .field textarea:focus {
+    outline: none;
+    border-color: var(--azul);
+  }
+  .field textarea { resize: none; min-height: 80px; }
+
+  /* Checkboxes tipo chip */
+  .chip-group { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip {
+    background: white;
+    border: 1.5px solid var(--gris-borde);
+    border-radius: 20px;
+    padding: 8px 14px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+    user-select: none;
+  }
+  .chip.selected {
+    background: var(--azul);
+    border-color: var(--azul);
+    color: white;
+  }
+  .chip.naranja.selected {
+    background: var(--naranja);
+    border-color: var(--naranja);
+    color: white;
+  }
+
+  /* Radio chips */
+  .radio-group { display: flex; flex-direction: column; gap: 8px; }
+  .radio-chip {
+    background: white;
+    border: 1.5px solid var(--gris-borde);
+    border-radius: 10px;
+    padding: 12px 16px;
+    font-size: 15px;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .radio-chip::before {
+    content: '';
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    border: 2px solid var(--gris-borde);
+    flex-shrink: 0;
+    transition: all 0.15s;
+  }
+  .radio-chip.selected {
+    border-color: var(--azul);
+    background: #EEF3FB;
+  }
+  .radio-chip.selected::before {
+    border-color: var(--azul);
+    background: var(--azul);
+    box-shadow: inset 0 0 0 3px white;
+  }
+
+  /* ─── BLOQUE CALCULADORA ──────────────────────── */
+  .calc-card {
+    background: white;
+    border-radius: var(--radio);
+    padding: 16px;
+    margin-bottom: 16px;
+    box-shadow: var(--sombra);
+  }
+  .calc-card h4 {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--gris-texto);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 12px;
+  }
+  .calc-row {
+    display: flex; gap: 10px; align-items: flex-end; margin-bottom: 10px;
+  }
+  .calc-row .field { flex: 1; margin-bottom: 0; }
+  .calc-symbol {
+    font-size: 20px; color: var(--gris-texto);
+    padding-bottom: 12px; line-height: 1;
+  }
+
+  .estimacion-resultado {
+    background: linear-gradient(135deg, var(--azul), var(--azul-med));
+    border-radius: var(--radio);
+    padding: 20px;
+    text-align: center;
+    margin-bottom: 16px;
+  }
+  .estimacion-resultado .label {
+    font-size: 12px;
+    color: rgba(255,255,255,0.7);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 6px;
+  }
+  .estimacion-resultado .valor {
+    font-size: 36px;
+    font-weight: 900;
+    color: var(--naranja-claro);
+    line-height: 1;
+  }
+  .estimacion-resultado .rango {
+    font-size: 13px;
+    color: rgba(255,255,255,0.6);
+    margin-top: 6px;
+  }
+  .estimacion-resultado .aviso {
+    font-size: 11px;
+    color: rgba(255,255,255,0.5);
+    margin-top: 10px;
+    font-style: italic;
+  }
+
+  .factores-lista { display: flex; flex-direction: column; gap: 8px; }
+  .factor-item {
+    background: white;
+    border: 1.5px solid var(--gris-borde);
+    border-radius: 10px;
+    padding: 12px 14px;
+    display: flex; align-items: center; justify-content: space-between;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .factor-item.activo {
+    border-color: var(--naranja);
+    background: #FEF3EC;
+  }
+  .factor-item .factor-nombre { font-size: 14px; font-weight: 500; }
+  .factor-item .factor-pct {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--naranja);
+  }
+  .factor-item .factor-check {
+    width: 22px; height: 22px;
+    border-radius: 6px;
+    border: 2px solid var(--gris-borde);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; color: white;
+    transition: all 0.15s; flex-shrink: 0;
+  }
+  .factor-item.activo .factor-check {
+    background: var(--naranja);
+    border-color: var(--naranja);
+  }
+
+  /* Alertas */
+  .alertas-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .alerta-item {
+    background: white;
+    border: 1.5px solid var(--gris-borde);
+    border-radius: 10px;
+    padding: 12px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    text-align: center;
+    transition: all 0.15s;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .alerta-item.marcada {
+    border-color: var(--amarillo);
+    background: #FFFBEB;
+  }
+  .alerta-count {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    font-size: 13px;
+    font-weight: 700;
+    margin: 0 auto 8px;
+  }
+  .alerta-banner {
+    background: #FFFBEB;
+    border: 1.5px solid var(--amarillo);
+    border-radius: 10px;
+    padding: 12px 14px;
+    font-size: 13px;
+    color: #92400E;
+    margin-top: 12px;
+    display: none;
+  }
+  .alerta-banner.visible { display: block; }
+
+  /* ─── NAVEGACIÓN INFERIOR ────────────────────── */
+  .form-nav {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: white;
+    border-top: 1px solid var(--gris-borde);
+    padding: 12px 16px;
+    padding-bottom: calc(12px + env(safe-area-inset-bottom));
+    display: flex; gap: 10px;
+    z-index: 200;
+  }
+  .btn-anterior {
+    flex: 0 0 auto;
+    background: var(--gris-fondo);
+    border: 1.5px solid var(--gris-borde);
+    color: var(--texto);
+    border-radius: 12px;
+    padding: 14px 20px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .btn-siguiente {
+    flex: 1;
+    background: var(--azul);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    padding: 14px;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .btn-siguiente.naranja { background: var(--naranja); }
+  .btn-siguiente:disabled { opacity: 0.4; }
+
+  /* ─── RESUMEN FINAL ──────────────────────────── */
+  .resumen-section {
+    background: white;
+    border-radius: var(--radio);
+    margin: 0 16px 12px;
+    overflow: hidden;
+    box-shadow: var(--sombra);
+  }
+  .resumen-section-header {
+    background: var(--azul);
+    padding: 10px 16px;
+    font-size: 12px;
+    font-weight: 700;
+    color: rgba(255,255,255,0.8);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .resumen-row {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--gris-borde);
+    display: flex; justify-content: space-between; align-items: flex-start;
+    gap: 12px;
+  }
+  .resumen-row:last-child { border-bottom: none; }
+  .resumen-label { font-size: 13px; color: var(--gris-texto); flex-shrink: 0; }
+  .resumen-valor { font-size: 14px; font-weight: 600; color: var(--texto); text-align: right; }
+
+  .resumen-estimacion {
+    margin: 0 16px 12px;
+    background: linear-gradient(135deg, var(--azul), var(--azul-med));
+    border-radius: var(--radio);
+    padding: 20px;
+    text-align: center;
+    box-shadow: var(--sombra);
+  }
+  .resumen-estimacion .re-label {
+    font-size: 12px; color: rgba(255,255,255,0.6); text-transform: uppercase; letter-spacing: 1px;
+  }
+  .resumen-estimacion .re-valor {
+    font-size: 40px; font-weight: 900; color: var(--naranja-claro); line-height: 1.1; margin: 6px 0;
+  }
+  .resumen-estimacion .re-rango {
+    font-size: 13px; color: rgba(255,255,255,0.5);
+  }
+
+  .btns-finales {
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .btn-pdf {
+    background: var(--naranja);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    padding: 16px;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    width: 100%;
+  }
+  .btn-guardar {
+    background: var(--azul);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    padding: 14px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    width: 100%;
+  }
+  .btn-nueva-visita {
+    background: var(--gris-fondo);
+    color: var(--azul);
+    border: 1.5px solid var(--gris-borde);
+    border-radius: 12px;
+    padding: 14px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    width: 100%;
+  }
+
+  .btn-borrar-card {
+    background: none;
+    border: none;
+    font-size: 16px;
+    cursor: pointer;
+    padding: 2px 4px;
+    border-radius: 6px;
+    opacity: 0.5;
+    transition: opacity 0.15s, background 0.15s;
+  }
+  .btn-borrar-card:active {
+    opacity: 1;
+    background: #FEE2E2;
+  }
+
+  .modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 500;
+    display: flex; align-items: flex-end;
+    padding: 20px;
+  }
+  .modal-overlay.hidden { display: none; }
+  .modal-box {
+    background: white;
+    border-radius: 16px;
+    padding: 24px 20px 20px;
+    width: 100%;
+  }
+  .modal-titulo {
+    font-size: 17px; font-weight: 700; color: var(--texto);
+    margin-bottom: 6px;
+  }
+  .modal-desc {
+    font-size: 14px; color: var(--gris-texto);
+    margin-bottom: 20px; line-height: 1.4;
+  }
+  .modal-btns { display: flex; gap: 10px; }
+  .modal-btn-cancelar {
+    flex: 1; background: var(--gris-fondo);
+    border: 1.5px solid var(--gris-borde);
+    border-radius: 10px; padding: 13px;
+    font-size: 15px; font-weight: 600;
+    cursor: pointer; color: var(--texto);
+  }
+  .modal-btn-borrar {
+    flex: 1; background: var(--rojo);
+    border: none; border-radius: 10px; padding: 13px;
+    font-size: 15px; font-weight: 700;
+    cursor: pointer; color: white;
+  }
+
+  .toast {
+    position: fixed;
+    bottom: 100px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--texto);
+    color: white;
+    border-radius: 20px;
+    padding: 10px 20px;
+    font-size: 14px;
+    font-weight: 600;
+    opacity: 0;
+    transition: opacity 0.2s;
+    z-index: 9999;
+    white-space: nowrap;
+  }
+  .toast.visible { opacity: 1; }
+
+  .divider { height: 16px; }
+</style>
+</head>
+<body>
+
+<div class="app-header">
+  <div class="logo">
+    <div class="logo-mark">DD</div>
+    <div class="logo-text">
+      <strong>DelDim</strong>
+      <span>Visitas de obra</span>
+    </div>
+  </div>
+  <button class="btn-nueva" onclick="nuevaVisita()">＋ Nueva visita</button>
+</div>
+
+<div class="main">
+
+  <!-- ═══ VISTA: LISTA ═══════════════════════════ -->
+  <div class="view active" id="view-lista">
+    <div class="lista-header">
+      <h2>Visitas</h2>
+      <span class="contador" id="contador-visitas">0</span>
+    </div>
+    <div id="lista-contenido">
+      <div class="empty-state">
+        <div class="icon">🏗️</div>
+        <p>Aún no hay visitas registradas.<br>Pulsa <strong>Nueva visita</strong> para empezar.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ VISTA: FORMULARIO ══════════════════════ -->
+  <div class="view" id="view-form">
+    <div class="form-header">
+      <button class="form-back" onclick="volverLista()">← Visitas</button>
+      <div class="form-title" id="form-title">Nueva visita</div>
+      <div class="form-subtitle" id="form-subtitle">Bloque A · Datos del cliente</div>
+    </div>
+    <div class="progress-bar-wrap">
+      <div class="progress-steps" id="progress-steps"></div>
+    </div>
+
+    <div class="form-body">
+
+      <!-- BLOQUE A: DATOS CLIENTE -->
+      <div class="bloque active" id="bloque-0">
+        <div class="bloque-titulo">Bloque A</div>
+        <div class="bloque-nombre">Datos del cliente</div>
+
+        <div class="field">
+          <label>Nombre del cliente *</label>
+          <input type="text" id="f-cliente" placeholder="Nombre y apellido" autocomplete="off">
+        </div>
+        <div class="field">
+          <label>Teléfono</label>
+          <input type="tel" id="f-telefono" placeholder="+34 6xx xxx xxx">
+        </div>
+        <div class="field">
+          <label>Email</label>
+          <input type="email" id="f-email" placeholder="correo@ejemplo.com">
+        </div>
+        <div class="field">
+          <label>Dirección de la obra *</label>
+          <input type="text" id="f-direccion" placeholder="Calle, número, municipio">
+        </div>
+        <div class="field">
+          <label>Tipo de propiedad</label>
+          <div class="chip-group" id="f-tipo-prop">
+            <div class="chip" onclick="toggleChipSingle(this,'f-tipo-prop')">Piso</div>
+            <div class="chip" onclick="toggleChipSingle(this,'f-tipo-prop')">Casa / chalet</div>
+            <div class="chip" onclick="toggleChipSingle(this,'f-tipo-prop')">Ático</div>
+            <div class="chip" onclick="toggleChipSingle(this,'f-tipo-prop')">Local comercial</div>
+            <div class="chip" onclick="toggleChipSingle(this,'f-tipo-prop')">Otro</div>
+          </div>
+        </div>
+        <div class="field">
+          <label>Año de construcción aprox.</label>
+          <input type="number" id="f-anio" placeholder="Ej: 1975" min="1900" max="2024">
+        </div>
+        <div class="field">
+          <label>¿Hay planos disponibles?</label>
+          <div class="chip-group" id="f-planos">
+            <div class="chip" onclick="toggleChipSingle(this,'f-planos')">Sí</div>
+            <div class="chip" onclick="toggleChipSingle(this,'f-planos')">No</div>
+            <div class="chip" onclick="toggleChipSingle(this,'f-planos')">Solo catastro</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- BLOQUE B: ALCANCE -->
+      <div class="bloque" id="bloque-1">
+        <div class="bloque-titulo">Bloque B</div>
+        <div class="bloque-nombre">¿Qué quiere hacer?</div>
+        <p style="font-size:13px;color:var(--gris-texto);margin-bottom:16px;">Marcar todo lo que el cliente menciona.</p>
+
+        <div class="chip-group" id="f-alcance">
+          <div class="chip" onclick="toggleChip(this)">Reforma integral</div>
+          <div class="chip" onclick="toggleChip(this)">Cocina</div>
+          <div class="chip" onclick="toggleChip(this)">Baños</div>
+          <div class="chip" onclick="toggleChip(this)">Salón / comedor</div>
+          <div class="chip" onclick="toggleChip(this)">Dormitorios</div>
+          <div class="chip" onclick="toggleChip(this)">Suelos</div>
+          <div class="chip" onclick="toggleChip(this)">Pintura general</div>
+          <div class="chip" onclick="toggleChip(this)">Falsos techos</div>
+          <div class="chip" onclick="toggleChip(this)">Instalación eléctrica</div>
+          <div class="chip" onclick="toggleChip(this)">Fontanería</div>
+          <div class="chip" onclick="toggleChip(this)">Climatización</div>
+          <div class="chip" onclick="toggleChip(this)">Terraza / cubierta</div>
+          <div class="chip" onclick="toggleChip(this)">Fachada exterior</div>
+          <div class="chip" onclick="toggleChip(this)">Piscina</div>
+          <div class="chip" onclick="toggleChip(this)">Jardín</div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="field">
+          <label>Notas de alcance</label>
+          <textarea id="f-notas-alcance" placeholder="Detalles adicionales que mencione el cliente..."></textarea>
+        </div>
+      </div>
+
+      <!-- BLOQUE C: ESTADO INMUEBLE -->
+      <div class="bloque" id="bloque-2">
+        <div class="bloque-titulo">Bloque C</div>
+        <div class="bloque-nombre">Estado del inmueble</div>
+
+        <div class="field">
+          <label>Estado general</label>
+          <div class="radio-group" id="f-estado">
+            <div class="radio-chip" onclick="toggleRadio(this,'f-estado')">Buen estado</div>
+            <div class="radio-chip" onclick="toggleRadio(this,'f-estado')">Deterioro leve</div>
+            <div class="radio-chip" onclick="toggleRadio(this,'f-estado')">Deterioro importante</div>
+            <div class="radio-chip" onclick="toggleRadio(this,'f-estado')">Inhabitable</div>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Instalación eléctrica</label>
+          <div class="chip-group" id="f-electrica">
+            <div class="chip" onclick="toggleChipSingle(this,'f-electrica')">Moderna</div>
+            <div class="chip" onclick="toggleChipSingle(this,'f-electrica')">Antigua / sin tierra</div>
+            <div class="chip" onclick="toggleChipSingle(this,'f-electrica')">Desconocida</div>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Fontanería</label>
+          <div class="chip-group" id="f-fontaneria">
+            <div class="chip" onclick="toggleChipSingle(this,'f-fontaneria')">Moderna</div>
+            <div class="chip" onclick="toggleChipSingle(this,'f-fontaneria')">Antigua (hierro/plomo)</div>
+            <div class="chip" onclick="toggleChipSingle(this,'f-fontaneria')">Desconocida</div>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>¿Propiedad ocupada durante la obra?</label>
+          <div class="chip-group" id="f-ocupada">
+            <div class="chip" onclick="toggleChipSingle(this,'f-ocupada')">No (vacía)</div>
+            <div class="chip" onclick="toggleChipSingle(this,'f-ocupada')">Sí</div>
+            <div class="chip" onclick="toggleChipSingle(this,'f-ocupada')">Parcialmente</div>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Acceso al inmueble</label>
+          <div class="chip-group" id="f-acceso">
+            <div class="chip" onclick="toggleChip(this)">Sin dificultad</div>
+            <div class="chip" onclick="toggleChip(this)">Sin ascensor</div>
+            <div class="chip" onclick="toggleChip(this)">Calle estrecha</div>
+            <div class="chip" onclick="toggleChip(this)">Horario restringido</div>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Observaciones del estado</label>
+          <textarea id="f-obs-estado" placeholder="Anomalías visibles, elementos destacados..."></textarea>
+        </div>
+      </div>
+
+      <!-- BLOQUE D: CALIDADES -->
+      <div class="bloque" id="bloque-3">
+        <div class="bloque-titulo">Bloque D</div>
+        <div class="bloque-nombre">Calidad y acabados</div>
+
+        <div class="field">
+          <label>Nivel de calidad deseado</label>
+          <div class="radio-group" id="f-calidad">
+            <div class="radio-chip" onclick="toggleRadio(this,'f-calidad')">Básico — catálogo estándar</div>
+            <div class="radio-chip" onclick="toggleRadio(this,'f-calidad')">Medio — buena relación calidad-precio</div>
+            <div class="radio-chip" onclick="toggleRadio(this,'f-calidad')">Alto — materiales premium</div>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>¿Tiene referencias visuales?</label>
+          <div class="chip-group" id="f-referencias">
+            <div class="chip" onclick="toggleChipSingle(this,'f-referencias')">Sí (Pinterest / fotos)</div>
+            <div class="chip" onclick="toggleChipSingle(this,'f-referencias')">Sí (ha visto otra obra)</div>
+            <div class="chip" onclick="toggleChipSingle(this,'f-referencias')">No tiene claro aún</div>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>¿Aporta materiales?</label>
+          <div class="chip-group" id="f-materiales">
+            <div class="chip" onclick="toggleChipSingle(this,'f-materiales')">No</div>
+            <div class="chip" onclick="toggleChipSingle(this,'f-materiales')">Sí (total)</div>
+            <div class="chip" onclick="toggleChipSingle(this,'f-materiales')">Sí (parcialmente)</div>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Preferencias o referencias</label>
+          <textarea id="f-preferencias" placeholder="Estilo, materiales concretos, ejemplos mencionados..."></textarea>
+        </div>
+      </div>
+
+      <!-- BLOQUE E: PLAZO Y PRESUPUESTO -->
+      <div class="bloque" id="bloque-4">
+        <div class="bloque-titulo">Bloque E</div>
+        <div class="bloque-nombre">Plazo y presupuesto</div>
+
+        <div class="field">
+          <label>Urgencia del cliente</label>
+          <div class="radio-group" id="f-urgencia">
+            <div class="radio-chip" onclick="toggleRadio(this,'f-urgencia')">Puede esperar (más de 3 meses)</div>
+            <div class="radio-chip" onclick="toggleRadio(this,'f-urgencia')">Media (1–3 meses)</div>
+            <div class="radio-chip" onclick="toggleRadio(this,'f-urgencia')">Urgente (menos de 1 mes)</div>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Fecha ideal de inicio</label>
+          <input type="date" id="f-fecha-inicio">
+        </div>
+
+        <div class="field">
+          <label>Presupuesto orientativo del cliente</label>
+          <div class="radio-group" id="f-presupuesto">
+            <div class="radio-chip" onclick="toggleRadio(this,'f-presupuesto')">Hasta 30.000 €</div>
+            <div class="radio-chip" onclick="toggleRadio(this,'f-presupuesto')">30.000 – 80.000 €</div>
+            <div class="radio-chip" onclick="toggleRadio(this,'f-presupuesto')">80.000 – 200.000 €</div>
+            <div class="radio-chip" onclick="toggleRadio(this,'f-presupuesto')">Más de 200.000 € / no definido</div>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>¿Tiene financiación?</label>
+          <div class="chip-group" id="f-financiacion">
+            <div class="chip" onclick="toggleChipSingle(this,'f-financiacion')">Sí, confirmada</div>
+            <div class="chip" onclick="toggleChipSingle(this,'f-financiacion')">En trámite</div>
+            <div class="chip" onclick="toggleChipSingle(this,'f-financiacion')">No / pendiente</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- BLOQUE F: CALCULADORA -->
+      <div class="bloque" id="bloque-5">
+        <div class="bloque-titulo">Bloque F</div>
+        <div class="bloque-nombre">Estimación de precio</div>
+
+        <div class="calc-card">
+          <h4>Superficie y tipo de reforma</h4>
+          <div class="calc-row">
+            <div class="field">
+              <label>m² aproximados</label>
+              <input type="number" id="f-metros" placeholder="0" min="0" oninput="calcularEstimacion()">
+            </div>
+            <div class="calc-symbol">×</div>
+            <div class="field">
+              <label>€/m²</label>
+              <input type="number" id="f-ratio" placeholder="0" min="0" oninput="calcularEstimacion()">
+            </div>
+          </div>
+          <p style="font-size:12px;color:var(--gris-texto)">Referencia: Integral básica 600–750 · media 750–950 · alta 950–1.400 €/m²</p>
+        </div>
+
+        <div class="calc-card">
+          <h4>Factores de ajuste (marcar los que aplican)</h4>
+          <div class="factores-lista">
+            <div class="factor-item" onclick="toggleFactor(this, 20)" data-pct="20">
+              <div>
+                <div class="factor-nombre">Edificio antiguo (+40 años)</div>
+                <div style="font-size:12px;color:var(--gris-texto)">Instalaciones, imprevistos</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px">
+                <span class="factor-pct">+20%</span>
+                <div class="factor-check">✓</div>
+              </div>
+            </div>
+            <div class="factor-item" onclick="toggleFactor(this, 15)" data-pct="15">
+              <div>
+                <div class="factor-nombre">Acceso difícil</div>
+                <div style="font-size:12px;color:var(--gris-texto)">Sin ascensor, calle estrecha</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px">
+                <span class="factor-pct">+15%</span>
+                <div class="factor-check">✓</div>
+              </div>
+            </div>
+            <div class="factor-item" onclick="toggleFactor(this, 12)" data-pct="12">
+              <div>
+                <div class="factor-nombre">Propiedad ocupada</div>
+                <div style="font-size:12px;color:var(--gris-texto)">Trabajo por zonas, protecciones</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px">
+                <span class="factor-pct">+12%</span>
+                <div class="factor-check">✓</div>
+              </div>
+            </div>
+            <div class="factor-item" onclick="toggleFactor(this, 18)" data-pct="18">
+              <div>
+                <div class="factor-nombre">Plazo urgente</div>
+                <div style="font-size:12px;color:var(--gris-texto)">Menos de 8 semanas</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px">
+                <span class="factor-pct">+18%</span>
+                <div class="factor-check">✓</div>
+              </div>
+            </div>
+            <div class="factor-item" onclick="toggleFactor(this, -5)" data-pct="-5">
+              <div>
+                <div class="factor-nombre">Cliente aporta materiales</div>
+                <div style="font-size:12px;color:var(--gris-texto)">Total o parcialmente</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px">
+                <span class="factor-pct" style="color:var(--verde)">-5%</span>
+                <div class="factor-check">✓</div>
+              </div>
+            </div>
+            <div class="factor-item" onclick="toggleFactor(this, -5)" data-pct="-5b">
+              <div>
+                <div class="factor-nombre">Temporada baja (nov–feb)</div>
+                <div style="font-size:12px;color:var(--gris-texto)">Mayor disponibilidad equipo</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px">
+                <span class="factor-pct" style="color:var(--verde)">-5%</span>
+                <div class="factor-check">✓</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="estimacion-resultado" id="estimacion-resultado">
+          <div class="label">Estimación orientativa</div>
+          <div class="valor" id="resultado-valor">— €</div>
+          <div class="rango" id="resultado-rango"></div>
+          <div class="aviso">±20% · Solo para uso interno. No compartir sin medición real.</div>
+        </div>
+
+        <div class="field">
+          <label>Observaciones de la estimación</label>
+          <textarea id="f-obs-estimacion" placeholder="Partidas especiales, dudas a resolver, imprevistos detectados..."></textarea>
+        </div>
+      </div>
+
+      <!-- BLOQUE G: ALERTAS -->
+      <div class="bloque" id="bloque-6">
+        <div class="bloque-titulo">Bloque G</div>
+        <div class="bloque-nombre">Señales de alerta</div>
+        <p style="font-size:13px;color:var(--gris-texto);margin-bottom:16px;">Marca las que detectes durante la visita.</p>
+
+        <div class="alertas-grid" id="f-alertas">
+          <div class="alerta-item" onclick="toggleAlerta(this)">⚡ Instalaciones muy antiguas</div>
+          <div class="alerta-item" onclick="toggleAlerta(this)">📋 Sin licencia previa</div>
+          <div class="alerta-item" onclick="toggleAlerta(this)">🏗️ Cambio de uso o ampliación</div>
+          <div class="alerta-item" onclick="toggleAlerta(this)">🏢 Comunidad con restricciones</div>
+          <div class="alerta-item" onclick="toggleAlerta(this)">❓ Cliente sin decisión clara</div>
+          <div class="alerta-item" onclick="toggleAlerta(this)">💸 Presupuesto muy ajustado</div>
+          <div class="alerta-item" onclick="toggleAlerta(this)">⏱️ Plazo irreal</div>
+          <div class="alerta-item" onclick="toggleAlerta(this)">👥 Terceros involucrados</div>
+        </div>
+
+        <div class="alerta-banner" id="alerta-banner">
+          ⚠️ Hay <strong id="alerta-count-num">0</strong> señales marcadas — revisar con dirección antes de presentar presupuesto.
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="field">
+          <label>Próxima acción acordada</label>
+          <div class="radio-group" id="f-proxima">
+            <div class="radio-chip" onclick="toggleRadio(this,'f-proxima')">Medición detallada</div>
+            <div class="radio-chip" onclick="toggleRadio(this,'f-proxima')">Envío de presupuesto formal</div>
+            <div class="radio-chip" onclick="toggleRadio(this,'f-proxima')">Segunda visita</div>
+            <div class="radio-chip" onclick="toggleRadio(this,'f-proxima')">Esperar decisión del cliente</div>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Fecha compromiso de respuesta</label>
+          <input type="date" id="f-fecha-respuesta">
+        </div>
+
+        <div class="field">
+          <label>Observaciones finales</label>
+          <textarea id="f-obs-final" placeholder="Impresión general, puntos clave a recordar..."></textarea>
+        </div>
+      </div>
+
+      <!-- BLOQUE H: RESUMEN -->
+      <div class="bloque" id="bloque-7">
+        <div style="padding:4px 0 16px">
+          <div class="bloque-titulo">Resumen</div>
+          <div class="bloque-nombre">Visita completada</div>
+        </div>
+
+        <div id="resumen-contenido"></div>
+
+        <div class="btns-finales">
+          <button class="btn-pdf" onclick="generarPDF()">📄 Generar PDF del resumen</button>
+          <button class="btn-guardar" onclick="guardarVisita()">💾 Guardar en mis visitas</button>
+          <button class="btn-nueva-visita" onclick="volverLista()">← Volver a la lista</button>
+        </div>
+      </div>
+
+    </div><!-- /form-body -->
+
+    <div class="form-nav" id="form-nav">
+      <button class="btn-anterior" id="btn-anterior" onclick="bloqueAnterior()">←</button>
+      <button class="btn-siguiente" id="btn-siguiente" onclick="bloqueSiguiente()">Siguiente →</button>
+    </div>
+  </div>
+
+</div><!-- /main -->
+
+<div class="modal-overlay hidden" id="modal-borrar">
+  <div class="modal-box">
+    <div class="modal-titulo">¿Borrar esta visita?</div>
+    <div class="modal-desc" id="modal-borrar-desc">Esta acción no se puede deshacer.</div>
+    <div class="modal-btns">
+      <button class="modal-btn-cancelar" onclick="cerrarModal()">Cancelar</button>
+      <button class="modal-btn-borrar" onclick="confirmarBorrar()">Borrar</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ─── ESTADO ───────────────────────────────────────────────────────────────────
+let bloqueActual = 0;
+const TOTAL_BLOQUES = 8;
+const NOMBRES_BLOQUES = [
+  'Bloque A · Datos del cliente',
+  'Bloque B · Alcance de la obra',
+  'Bloque C · Estado del inmueble',
+  'Bloque D · Calidad y acabados',
+  'Bloque E · Plazo y presupuesto',
+  'Bloque F · Estimación de precio',
+  'Bloque G · Señales de alerta',
+  'Resumen · Visita completada'
+];
+let visitas = JSON.parse(localStorage.getItem('deldim_visitas') || '[]');
+let factoresActivos = {};
+let editandoIndex = -1; // -1 = nueva visita, >=0 = editando existente
+
+// ─── NAVEGACIÓN ───────────────────────────────────────────────────────────────
+function mostrarVista(id) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function nuevaVisita() {
+  bloqueActual = 0;
+  factoresActivos = {};
+  editandoIndex = -1;
+  limpiarFormulario();
+  renderProgressBar();
+  mostrarBloque(0);
+  mostrarVista('view-form');
+  document.getElementById('form-title').textContent = 'Nueva visita';
+}
+
+function volverLista() {
+  mostrarVista('view-lista');
+  renderLista();
+}
+
+function mostrarBloque(n) {
+  document.querySelectorAll('.bloque').forEach(b => b.classList.remove('active'));
+  document.getElementById(`bloque-${n}`).classList.add('active');
+  document.getElementById('form-subtitle').textContent = NOMBRES_BLOQUES[n];
+  actualizarProgress(n);
+  actualizarBotonesNav(n);
+  window.scrollTo(0, 0);
+
+  if (n === 7) {
+    renderResumen();
+    document.getElementById('form-nav').style.display = 'none';
+  } else {
+    document.getElementById('form-nav').style.display = 'flex';
+  }
+}
+
+function bloqueSiguiente() {
+  if (bloqueActual === 0) {
+    const cliente = document.getElementById('f-cliente').value.trim();
+    if (!cliente) { mostrarToast('Introduce el nombre del cliente'); return; }
+  }
+  if (bloqueActual < TOTAL_BLOQUES - 1) {
+    bloqueActual++;
+    mostrarBloque(bloqueActual);
+  }
+}
+
+function bloqueAnterior() {
+  if (bloqueActual > 0) {
+    bloqueActual--;
+    mostrarBloque(bloqueActual);
+  }
+}
+
+function actualizarBotonesNav(n) {
+  const btnAnterior = document.getElementById('btn-anterior');
+  const btnSiguiente = document.getElementById('btn-siguiente');
+  btnAnterior.style.display = n === 0 ? 'none' : 'block';
+  if (n === 6) {
+    btnSiguiente.textContent = 'Ver resumen ✓';
+    btnSiguiente.classList.add('naranja');
+  } else {
+    btnSiguiente.textContent = 'Siguiente →';
+    btnSiguiente.classList.remove('naranja');
+  }
+}
+
+// ─── PROGRESS BAR ────────────────────────────────────────────────────────────
+function renderProgressBar() {
+  const container = document.getElementById('progress-steps');
+  container.innerHTML = '';
+  for (let i = 0; i < TOTAL_BLOQUES; i++) {
+    const step = document.createElement('div');
+    step.className = 'progress-step';
+    container.appendChild(step);
+  }
+}
+
+function actualizarProgress(n) {
+  document.querySelectorAll('.progress-step').forEach((step, i) => {
+    step.classList.remove('done', 'active');
+    if (i < n) step.classList.add('done');
+    else if (i === n) step.classList.add('active');
+  });
+}
+
+// ─── CHIPS / RADIO ───────────────────────────────────────────────────────────
+function toggleChip(el) {
+  el.classList.toggle('selected');
+}
+
+function toggleChipSingle(el, groupId) {
+  const group = document.getElementById(groupId);
+  group.querySelectorAll('.chip').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+function toggleRadio(el, groupId) {
+  const group = document.getElementById(groupId);
+  group.querySelectorAll('.radio-chip').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+function getChipValues(groupId) {
+  const group = document.getElementById(groupId);
+  if (!group) return [];
+  return [...group.querySelectorAll('.chip.selected, .radio-chip.selected')].map(c => c.textContent.trim());
+}
+
+function getRadioValue(groupId) {
+  const group = document.getElementById(groupId);
+  if (!group) return '';
+  const sel = group.querySelector('.radio-chip.selected');
+  return sel ? sel.textContent.trim() : '';
+}
+
+// ─── ALERTAS ─────────────────────────────────────────────────────────────────
+function toggleAlerta(el) {
+  el.classList.toggle('marcada');
+  const count = document.querySelectorAll('#f-alertas .alerta-item.marcada').length;
+  const banner = document.getElementById('alerta-banner');
+  const num = document.getElementById('alerta-count-num');
+  num.textContent = count;
+  banner.classList.toggle('visible', count >= 2);
+}
+
+function getAlertas() {
+  return [...document.querySelectorAll('#f-alertas .alerta-item.marcada')].map(a => a.textContent.trim());
+}
+
+// ─── FACTORES / CALCULADORA ──────────────────────────────────────────────────
+function toggleFactor(el, pct) {
+  const key = el.dataset.pct;
+  if (factoresActivos[key]) {
+    delete factoresActivos[key];
+    el.classList.remove('activo');
+  } else {
+    factoresActivos[key] = pct;
+    el.classList.add('activo');
+  }
+  calcularEstimacion();
+}
+
+function calcularEstimacion() {
+  const metros = parseFloat(document.getElementById('f-metros').value) || 0;
+  const ratio = parseFloat(document.getElementById('f-ratio').value) || 0;
+  if (!metros || !ratio) {
+    document.getElementById('resultado-valor').textContent = '— €';
+    document.getElementById('resultado-rango').textContent = '';
+    return;
+  }
+  let base = metros * ratio;
+  let ajustePct = Object.values(factoresActivos).reduce((a, b) => a + b, 0);
+  let total = base * (1 + ajustePct / 100);
+  let min = Math.round(total * 0.8 / 100) * 100;
+  let max = Math.round(total * 1.2 / 100) * 100;
+  document.getElementById('resultado-valor').textContent = formatEur(Math.round(total / 100) * 100);
+  document.getElementById('resultado-rango').textContent = `Rango: ${formatEur(min)} – ${formatEur(max)}`;
+}
+
+function formatEur(n) {
+  return n.toLocaleString('es-ES') + ' €';
+}
+
+function getEstimacion() {
+  const metros = parseFloat(document.getElementById('f-metros').value) || 0;
+  const ratio = parseFloat(document.getElementById('f-ratio').value) || 0;
+  if (!metros || !ratio) return null;
+  let base = metros * ratio;
+  let ajustePct = Object.values(factoresActivos).reduce((a, b) => a + b, 0);
+  let total = base * (1 + ajustePct / 100);
+  return {
+    metros, ratio, ajustePct,
+    total: Math.round(total / 100) * 100,
+    min: Math.round(total * 0.8 / 100) * 100,
+    max: Math.round(total * 1.2 / 100) * 100,
+  };
+}
+
+// ─── RESUMEN ──────────────────────────────────────────────────────────────────
+function renderResumen() {
+  const est = getEstimacion();
+  const alertas = getAlertas();
+  const container = document.getElementById('resumen-contenido');
+
+  let html = '';
+
+  if (est) {
+    html += `<div class="resumen-estimacion">
+      <div class="re-label">Estimación orientativa</div>
+      <div class="re-valor">${formatEur(est.total)}</div>
+      <div class="re-rango">Rango: ${formatEur(est.min)} – ${formatEur(est.max)} · ±20%</div>
+    </div>`;
+  }
+
+  const secciones = [
+    { titulo: 'Cliente y propiedad', filas: [
+      ['Cliente', v('f-cliente')],
+      ['Teléfono', v('f-telefono')],
+      ['Email', v('f-email')],
+      ['Dirección', v('f-direccion')],
+      ['Tipo propiedad', getChipValues('f-tipo-prop').join(', ')],
+      ['Año construcción', v('f-anio')],
+      ['Planos', getChipValues('f-planos').join(', ')],
+    ]},
+    { titulo: 'Alcance de la obra', filas: [
+      ['Zonas / trabajos', getChipValues('f-alcance').join(', ') || '—'],
+      ['Notas', v('f-notas-alcance')],
+    ]},
+    { titulo: 'Estado del inmueble', filas: [
+      ['Estado general', getRadioValue('f-estado')],
+      ['Eléctrica', getChipValues('f-electrica').join(', ')],
+      ['Fontanería', getChipValues('f-fontaneria').join(', ')],
+      ['Propiedad ocupada', getChipValues('f-ocupada').join(', ')],
+      ['Acceso', getChipValues('f-acceso').join(', ')],
+    ]},
+    { titulo: 'Calidad y acabados', filas: [
+      ['Nivel', getRadioValue('f-calidad')],
+      ['Referencias', getChipValues('f-referencias').join(', ')],
+      ['Aporta materiales', getChipValues('f-materiales').join(', ')],
+    ]},
+    { titulo: 'Plazo y presupuesto', filas: [
+      ['Urgencia', getRadioValue('f-urgencia')],
+      ['Inicio deseado', v('f-fecha-inicio')],
+      ['Presupuesto cliente', getRadioValue('f-presupuesto')],
+      ['Financiación', getChipValues('f-financiacion').join(', ')],
+    ]},
+    { titulo: 'Estimación', filas: est ? [
+      ['Superficie', `${est.metros} m²`],
+      ['Ratio', `${est.ratio} €/m²`],
+      ['Ajuste factores', `${est.ajustePct > 0 ? '+' : ''}${est.ajustePct}%`],
+      ['Factores activos', Object.keys(factoresActivos).join(', ') || '—'],
+      ['Observaciones', v('f-obs-estimacion')],
+    ] : [['—', 'Sin datos de estimación']]},
+    { titulo: 'Señales de alerta', filas: [
+      ['Alertas detectadas', alertas.length > 0 ? alertas.join(' · ') : 'Ninguna'],
+      ['Próxima acción', getRadioValue('f-proxima')],
+      ['Fecha respuesta', v('f-fecha-respuesta')],
+      ['Observaciones finales', v('f-obs-final')],
+    ]},
+  ];
+
+  secciones.forEach(sec => {
+    const filasHTML = sec.filas.filter(([,val]) => val).map(([label, val]) =>
+      `<div class="resumen-row"><span class="resumen-label">${label}</span><span class="resumen-valor">${val}</span></div>`
+    ).join('');
+    if (filasHTML) {
+      html += `<div class="resumen-section">
+        <div class="resumen-section-header">${sec.titulo}</div>
+        ${filasHTML}
+      </div>`;
+    }
+  });
+
+  container.innerHTML = html;
+}
+
+function v(id) {
+  const el = document.getElementById(id);
+  return el ? el.value.trim() : '';
+}
+
+// ─── GUARDAR VISITA ──────────────────────────────────────────────────────────
+function recogerDatos() {
+  const est = getEstimacion();
+  return {
+    id: Date.now(),
+    fecha: new Date().toLocaleDateString('es-ES'),
+    fechaISO: new Date().toISOString(),
+    cliente: v('f-cliente'),
+    telefono: v('f-telefono'),
+    email: v('f-email'),
+    direccion: v('f-direccion'),
+    tipoProp: getChipValues('f-tipo-prop').join(', '),
+    anio: v('f-anio'),
+    planos: getChipValues('f-planos').join(', '),
+    alcance: getChipValues('f-alcance').join(', '),
+    notasAlcance: v('f-notas-alcance'),
+    estadoGeneral: getRadioValue('f-estado'),
+    electrica: getChipValues('f-electrica').join(', '),
+    fontaneria: getChipValues('f-fontaneria').join(', '),
+    ocupada: getChipValues('f-ocupada').join(', '),
+    acceso: getChipValues('f-acceso').join(', '),
+    obsEstado: v('f-obs-estado'),
+    calidad: getRadioValue('f-calidad'),
+    referencias: getChipValues('f-referencias').join(', '),
+    materiales: getChipValues('f-materiales').join(', '),
+    preferencias: v('f-preferencias'),
+    urgencia: getRadioValue('f-urgencia'),
+    fechaInicio: v('f-fecha-inicio'),
+    presupuesto: getRadioValue('f-presupuesto'),
+    financiacion: getChipValues('f-financiacion').join(', '),
+    metros: est ? est.metros : '',
+    ratio: est ? est.ratio : '',
+    ajustePct: est ? est.ajustePct : 0,
+    estimacionTotal: est ? est.total : '',
+    estimacionMin: est ? est.min : '',
+    estimacionMax: est ? est.max : '',
+    obsEstimacion: v('f-obs-estimacion'),
+    alertas: getAlertas().join(' · '),
+    proximaAccion: getRadioValue('f-proxima'),
+    fechaRespuesta: v('f-fecha-respuesta'),
+    obsFinal: v('f-obs-final'),
+  };
+}
+
+function guardarVisita() {
+  const datos = recogerDatos();
+  if (editandoIndex >= 0) {
+    // Mantener id y fecha original, actualizar el resto
+    datos.id = visitas[editandoIndex].id;
+    datos.fecha = visitas[editandoIndex].fecha;
+    datos.fechaISO = visitas[editandoIndex].fechaISO;
+    datos.fechaEdicion = new Date().toLocaleDateString('es-ES');
+    visitas[editandoIndex] = datos;
+    mostrarToast('Visita actualizada ✓');
+  } else {
+    visitas.unshift(datos);
+    mostrarToast('Visita guardada ✓');
+  }
+  localStorage.setItem('deldim_visitas', JSON.stringify(visitas));
+  editandoIndex = -1;
+  setTimeout(() => volverLista(), 1200);
+}
+
+// ─── LISTA DE VISITAS ────────────────────────────────────────────────────────
+function renderLista() {
+  visitas = JSON.parse(localStorage.getItem('deldim_visitas') || '[]');
+  document.getElementById('contador-visitas').textContent = visitas.length;
+  const container = document.getElementById('lista-contenido');
+  if (!visitas.length) {
+    container.innerHTML = `<div class="empty-state"><div class="icon">🏗️</div><p>Aún no hay visitas registradas.<br>Pulsa <strong>Nueva visita</strong> para empezar.</p></div>`;
+    return;
+  }
+  container.innerHTML = visitas.map((vis, i) => `
+    <div class="visita-card" onclick="verVisita(${i})">
+      <div class="visita-card-top">
+        <div class="visita-card-nombre">${vis.cliente || 'Sin nombre'}</div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div class="visita-card-fecha">${vis.fechaEdicion ? '✏️ ' + vis.fechaEdicion : vis.fecha}</div>
+          <button class="btn-borrar-card" onclick="event.stopPropagation();borrarVisita(${i})" title="Borrar visita">🗑️</button>
+        </div>
+      </div>
+      <div class="visita-card-dir">${vis.direccion || '—'}</div>
+      <div class="visita-card-bottom">
+        <span class="badge-tipo">${vis.tipoProp || vis.alcance?.split(',')[0] || '—'}</span>
+        ${vis.estimacionTotal ? `<span class="estimacion-badge">${formatEur(vis.estimacionTotal)}</span>` : '<span style="font-size:12px;color:var(--gris-texto)">Pulsa para editar →</span>'}
+      </div>
+    </div>
+  `).join('');
+}
+
+function verVisita(i) {
+  editandoIndex = i;
+  const d = visitas[i];
+  limpiarFormulario();
+  factoresActivos = {};
+
+  // Bloque A
+  sv('f-cliente', d.cliente);
+  sv('f-telefono', d.telefono);
+  sv('f-email', d.email);
+  sv('f-direccion', d.direccion);
+  setChipSingle('f-tipo-prop', d.tipoProp);
+  sv('f-anio', d.anio);
+  setChipSingle('f-planos', d.planos);
+
+  // Bloque B
+  setChips('f-alcance', d.alcance);
+  sv('f-notas-alcance', d.notasAlcance);
+
+  // Bloque C
+  setRadio('f-estado', d.estadoGeneral);
+  setChipSingle('f-electrica', d.electrica);
+  setChipSingle('f-fontaneria', d.fontaneria);
+  setChipSingle('f-ocupada', d.ocupada);
+  setChips('f-acceso', d.acceso);
+  sv('f-obs-estado', d.obsEstado);
+
+  // Bloque D
+  setRadio('f-calidad', d.calidad);
+  setChipSingle('f-referencias', d.referencias);
+  setChipSingle('f-materiales', d.materiales);
+  sv('f-preferencias', d.preferencias);
+
+  // Bloque E
+  setRadio('f-urgencia', d.urgencia);
+  sv('f-fecha-inicio', d.fechaInicio);
+  setRadio('f-presupuesto', d.presupuesto);
+  setChipSingle('f-financiacion', d.financiacion);
+
+  // Bloque F - calculadora
+  sv('f-metros', d.metros);
+  sv('f-ratio', d.ratio);
+  sv('f-obs-estimacion', d.obsEstimacion);
+  // Restaurar factores activos por porcentaje almacenado
+  if (d.ajustePct) {
+    // Reactivar factores que sumen el ajuste guardado (aproximación)
+    document.querySelectorAll('.factor-item').forEach(el => {
+      const pct = parseInt(el.dataset.pct);
+      // No restauramos factores automáticamente para evitar errores;
+      // el usuario los puede re-marcar si edita
+    });
+  }
+  calcularEstimacion();
+
+  // Bloque G - alertas
+  if (d.alertas) {
+    const alertaTextos = d.alertas.split(' · ').map(a => a.trim());
+    document.querySelectorAll('#f-alertas .alerta-item').forEach(el => {
+      if (alertaTextos.some(a => el.textContent.trim().includes(a.replace(/^[^ ]+ /, '')))) {
+        el.classList.add('marcada');
+      }
+    });
+    const count = document.querySelectorAll('#f-alertas .alerta-item.marcada').length;
+    if (count >= 2) {
+      document.getElementById('alerta-banner').classList.add('visible');
+      document.getElementById('alerta-count-num').textContent = count;
+    }
+  }
+  setRadio('f-proxima', d.proximaAccion);
+  sv('f-fecha-respuesta', d.fechaRespuesta);
+  sv('f-obs-final', d.obsFinal);
+
+  bloqueActual = 0;
+  renderProgressBar();
+  mostrarBloque(0);
+  mostrarVista('view-form');
+  document.getElementById('form-title').textContent = `Editar: ${d.cliente || 'Visita'}`;
+}
+
+// helpers para cargar datos en el formulario
+function sv(id, val) {
+  const el = document.getElementById(id);
+  if (el && val !== undefined && val !== null) el.value = val;
+}
+
+function setChipSingle(groupId, val) {
+  if (!val) return;
+  const group = document.getElementById(groupId);
+  if (!group) return;
+  group.querySelectorAll('.chip').forEach(c => {
+    if (val.includes(c.textContent.trim())) c.classList.add('selected');
+  });
+}
+
+function setChips(groupId, val) {
+  if (!val) return;
+  const vals = val.split(',').map(v => v.trim());
+  const group = document.getElementById(groupId);
+  if (!group) return;
+  group.querySelectorAll('.chip').forEach(c => {
+    if (vals.includes(c.textContent.trim())) c.classList.add('selected');
+  });
+}
+
+function setRadio(groupId, val) {
+  if (!val) return;
+  const group = document.getElementById(groupId);
+  if (!group) return;
+  group.querySelectorAll('.radio-chip').forEach(c => {
+    if (c.textContent.trim() === val.trim()) c.classList.add('selected');
+  });
+}
+}
+
+// ─── PDF ──────────────────────────────────────────────────────────────────────
+function generarPDF() {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+  const datos = recogerDatos();
+  const est = getEstimacion();
+  const alertas = getAlertas();
+
+  const AZUL = [31, 56, 100];
+  const NARANJA = [224, 92, 26];
+  const GRIS = [107, 114, 128];
+  const GRIS_FONDO = [245, 246, 248];
+  const BLANCO = [255, 255, 255];
+
+  let y = 0;
+  const W = 210;
+  const M = 14;
+  const CW = W - M * 2;
+
+  // Cabecera
+  doc.setFillColor(...AZUL);
+  doc.rect(0, 0, W, 38, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(18);
+  doc.setFont('helvetica', 'bold');
+  doc.text('DELDIM REFORMAS S.L.', M, 14);
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(180, 200, 230);
+  doc.text('Informe de Visita de Obra', M, 21);
+  doc.setTextColor(180, 180, 180);
+  doc.setFontSize(9);
+  doc.text(`Fecha: ${datos.fecha}`, M, 28);
+  doc.text(`Cliente: ${datos.cliente}`, M, 34);
+  if (est) {
+    doc.setTextColor(...NARANJA);
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`${formatEur(est.total)}`, W - M, 22, { align: 'right' });
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(180, 180, 180);
+    doc.text('estimación orientativa ±20%', W - M, 28, { align: 'right' });
+  }
+
+  y = 46;
+
+  function seccion(titulo) {
+    doc.setFillColor(...AZUL);
+    doc.rect(M, y, CW, 7, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'bold');
+    doc.text(titulo.toUpperCase(), M + 3, y + 5);
+    y += 10;
+  }
+
+  function fila(label, valor) {
+    if (!valor || valor === '—') return;
+    if (y > 270) { doc.addPage(); y = 20; }
+    doc.setFillColor(...GRIS_FONDO);
+    doc.rect(M, y, 55, 6, 'F');
+    doc.setTextColor(...GRIS);
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.text(label, M + 2, y + 4);
+    doc.setTextColor(30, 30, 30);
+    doc.setFont('helvetica', 'bold');
+    const lines = doc.splitTextToSize(valor, CW - 60);
+    doc.text(lines, M + 57, y + 4);
+    y += Math.max(7, lines.length * 5);
+  }
+
+  seccion('A. Cliente y propiedad');
+  fila('Cliente', datos.cliente);
+  fila('Teléfono', datos.telefono);
+  fila('Email', datos.email);
+  fila('Dirección', datos.direccion);
+  fila('Tipo propiedad', datos.tipoProp);
+  fila('Año construcción', datos.anio);
+  fila('Planos', datos.planos);
+  y += 3;
+
+  seccion('B. Alcance de la obra');
+  fila('Trabajos a realizar', datos.alcance);
+  fila('Notas', datos.notasAlcance);
+  y += 3;
+
+  seccion('C. Estado del inmueble');
+  fila('Estado general', datos.estadoGeneral);
+  fila('Instalación eléctrica', datos.electrica);
+  fila('Fontanería', datos.fontaneria);
+  fila('Propiedad ocupada', datos.ocupada);
+  fila('Acceso', datos.acceso);
+  fila('Observaciones', datos.obsEstado);
+  y += 3;
+
+  seccion('D. Calidad y acabados');
+  fila('Nivel calidad', datos.calidad);
+  fila('Referencias', datos.referencias);
+  fila('Aporta materiales', datos.materiales);
+  fila('Preferencias', datos.preferencias);
+  y += 3;
+
+  seccion('E. Plazo y presupuesto');
+  fila('Urgencia', datos.urgencia);
+  fila('Inicio deseado', datos.fechaInicio);
+  fila('Presupuesto cliente', datos.presupuesto);
+  fila('Financiación', datos.financiacion);
+  y += 3;
+
+  if (est) {
+    seccion('F. Estimación de precio');
+    fila('Superficie estimada', `${est.metros} m²`);
+    fila('Ratio aplicado', `${est.ratio} €/m²`);
+    fila('Ajuste por factores', `${est.ajustePct > 0 ? '+' : ''}${est.ajustePct}%`);
+    fila('Estimación base', formatEur(Math.round(est.metros * est.ratio / 100) * 100));
+    fila('Estimación ajustada', formatEur(est.total));
+    fila('Rango mínimo', formatEur(est.min));
+    fila('Rango máximo', formatEur(est.max));
+    fila('Observaciones', datos.obsEstimacion);
+    y += 3;
+  }
+
+  seccion('G. Señales de alerta y próximos pasos');
+  fila('Alertas detectadas', alertas.length ? alertas.join(' · ') : 'Ninguna');
+  fila('Próxima acción', datos.proximaAccion);
+  fila('Fecha respuesta', datos.fechaRespuesta);
+  fila('Observaciones finales', datos.obsFinal);
+  y += 8;
+
+  // Nota final
+  doc.setFillColor(255, 251, 235);
+  doc.rect(M, y, CW, 14, 'F');
+  doc.setDrawColor(245, 158, 11);
+  doc.rect(M, y, CW, 14, 'S');
+  doc.setTextColor(146, 64, 14);
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'bold');
+  doc.text('⚠ DOCUMENTO DE USO INTERNO', M + 4, y + 5);
+  doc.setFont('helvetica', 'normal');
+  doc.text('La estimación de precio es orientativa (±20%) y no sustituye a un presupuesto formal con medición real.', M + 4, y + 10);
+
+  // Pie de página
+  const totalPages = doc.internal.getNumberOfPages();
+  for (let i = 1; i <= totalPages; i++) {
+    doc.setPage(i);
+    doc.setFontSize(7);
+    doc.setTextColor(...GRIS);
+    doc.text('DELDIM REFORMAS S.L. · Documento confidencial · No compartir con terceros sin autorización', M, 292);
+    doc.text(`Pág. ${i} / ${totalPages}`, W - M, 292, { align: 'right' });
+  }
+
+  const nombreArchivo = `DelDim_Visita_${datos.cliente.replace(/\s+/g, '_')}_${datos.fecha.replace(/\//g, '-')}.pdf`;
+  doc.save(nombreArchivo);
+  mostrarToast('PDF generado ✓');
+}
+
+// ─── BORRAR VISITA ────────────────────────────────────────────────────────────
+let borrarIndex = -1;
+
+function borrarVisita(i) {
+  borrarIndex = i;
+  const vis = visitas[i];
+  document.getElementById('modal-borrar-desc').textContent =
+    `Se borrará la visita de ${vis.cliente || 'este cliente'} (${vis.fecha}). Esta acción no se puede deshacer.`;
+  document.getElementById('modal-borrar').classList.remove('hidden');
+}
+
+function cerrarModal() {
+  document.getElementById('modal-borrar').classList.add('hidden');
+  borrarIndex = -1;
+}
+
+function confirmarBorrar() {
+  if (borrarIndex < 0) return;
+  visitas.splice(borrarIndex, 1);
+  localStorage.setItem('deldim_visitas', JSON.stringify(visitas));
+  cerrarModal();
+  renderLista();
+  mostrarToast('Visita borrada');
+}
+
+// ─── UTILIDADES ───────────────────────────────────────────────────────────────
+function mostrarToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('visible');
+  setTimeout(() => t.classList.remove('visible'), 2200);
+}
+
+function limpiarFormulario() {
+  document.querySelectorAll('.chip.selected, .radio-chip.selected').forEach(c => c.classList.remove('selected'));
+  document.querySelectorAll('.factor-item.activo').forEach(f => f.classList.remove('activo'));
+  document.querySelectorAll('.alerta-item.marcada').forEach(a => a.classList.remove('marcada'));
+  document.querySelectorAll('input, textarea').forEach(i => i.value = '');
+  document.getElementById('alerta-banner').classList.remove('visible');
+  document.getElementById('resultado-valor').textContent = '— €';
+  document.getElementById('resultado-rango').textContent = '';
+  factoresActivos = {};
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+renderProgressBar();
+renderLista();
+</script>
+
+</body>
+</html>
